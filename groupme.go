@@ -2,8 +2,9 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
+	//	"fmt"
 	"net/http"
+	"time"
 )
 
 type GroupMessagesResponseWrapper struct {
@@ -40,11 +41,34 @@ type GroupMeMessageAttachment struct {
 }
 
 func fetchOldMessages(gID, apiToken string, dataChan chan GroupMeData) {
-	return
-	fetchMessages(gID, apiToken, "")
+	lastID := ""
+	for {
+		messages := fetchMessages(gID, apiToken, lastID)
+
+		if len(messages) == 0 {
+			break
+		}
+
+		gmd := <-dataChan
+		for _, message := range messages {
+			lastID = message.ID
+
+			processMessage(gmd, message)
+
+		}
+		dataChan <- gmd
+
+		lastID = messages[len(messages)-1].ID
+	}
 }
 
-func fetchMessages(gID, apiToken, lastID string) string {
+func processMessage(gmd GroupMeData, m GroupMeMessage) {
+	gmd.trackPostCount(m)
+	gmd.trackLikeCounts(m)
+	gmd.trackPostTimeOfDay(m)
+}
+
+func fetchMessages(gID, apiToken, lastID string) []GroupMeMessage {
 	url := "https://api.groupme.com/v3/groups/" + gID + "/messages?token=" + apiToken + "&limit=100"
 	if lastID != "" {
 		url += "&before_id=" + lastID
@@ -55,9 +79,30 @@ func fetchMessages(gID, apiToken, lastID string) string {
 	decoder := json.NewDecoder(resp.Body)
 	var data GroupMessagesResponseWrapper
 	decoder.Decode(&data)
-	numMessages := len(data.Response.Messages)
-	fmt.Println(numMessages)
-	fmt.Println(data.Response.Messages[numMessages-1].Text)
-	fmt.Println(data.Response.Messages[numMessages-1].ID)
-	return data.Response.Messages[numMessages-1].ID
+	return data.Response.Messages
+}
+
+func (gmd *GroupMeData) trackPostCount(m GroupMeMessage) {
+	poster := m.SenderID
+	gmd.NumPosts[poster] += 1
+}
+
+func (gmd *GroupMeData) trackLikeCounts(m GroupMeMessage) {
+	poster := m.SenderID
+	if gmd.LikeMatrix[poster] == nil {
+		gmd.LikeMatrix[poster] = make(map[string]int)
+	}
+	for _, liker := range m.FavoritedBy {
+		gmd.LikeMatrix[poster][liker] += 1
+	}
+}
+
+func (gmd *GroupMeData) trackPostTimeOfDay(m GroupMeMessage) {
+	poster := m.SenderID
+	posted := time.Unix(int64(m.CreatedAt), 0).UTC()
+	bucket := (posted.Hour() + posted.Minute()) / (24 * 60 / TIME_GRANULARITY)
+	if gmd.TimeOfDayPostMatrix[poster] == nil {
+		gmd.TimeOfDayPostMatrix[poster] = make([]int, TIME_GRANULARITY)
+	}
+	gmd.TimeOfDayPostMatrix[poster][bucket] += 1
 }

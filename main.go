@@ -5,7 +5,7 @@ import (
 	"strconv"
 )
 
-const TIME_GRANULARITY = 48
+const TIME_GRANULARITY = 12
 
 type GroupMeData struct {
 	// posterID -> numPosts
@@ -15,11 +15,16 @@ type GroupMeData struct {
 	LikeMatrix map[string]map[string]int
 
 	// posterID -> timeOfDay -> count
-	TimeOfDayPostMatrix map[string][TIME_GRANULARITY]int
+	TimeOfDayPostMatrix map[string][]int
 }
 
 func main() {
-	groupMeData := GroupMeData{nil, nil, nil}
+	groupMeData := GroupMeData{
+		make(map[string]int),
+		make(map[string]map[string]int),
+		make(map[string][]int),
+	}
+
 	dataChan := make(chan GroupMeData, 1)
 	dataChan <- groupMeData
 
@@ -35,6 +40,6 @@ func main() {
 		}
 	}
 
-	setUpServer(port, dataChan)
 	go fetchOldMessages(groupID, apiToken, dataChan)
+	setUpServer(port, dataChan)
 }
