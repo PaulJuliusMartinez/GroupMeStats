@@ -13,9 +13,9 @@ import (
 var groupTmpl, userTmpl, adminTmpl *template.Template
 
 func setUpServer(port int, dataChan chan GroupMeData) {
-	adminTmpl = template.Must(template.ParseFiles("./html/admin.go.html"))
-	groupTmpl = template.Must(template.ParseFiles("./html/group.go.html"))
-	userTmpl = template.Must(template.ParseFiles("./html/user.go.html"))
+	adminTmpl = template.Must(template.ParseFiles("./web/tmpl/admin.go.html"))
+	groupTmpl = template.Must(template.ParseFiles("./web/tmpl/group.go.html"))
+	userTmpl = template.Must(template.ParseFiles("./web/tmpl/user.go.html"))
 
 	http.HandleFunc("/abf", func(w http.ResponseWriter, req *http.Request) {
 		showGroupStats(w, req, dataChan)
@@ -72,9 +72,9 @@ func processNewMessage(w http.ResponseWriter, req *http.Request, dataChan chan G
 }
 
 func refreshTemplates() {
-	adminTmpl = template.Must(template.ParseFiles("./html/admin.go.html"))
-	groupTmpl = template.Must(template.ParseFiles("./html/group.go.html"))
-	userTmpl = template.Must(template.ParseFiles("./html/user.go.html"))
+	adminTmpl = template.Must(template.ParseFiles("./web/tmpl/admin.go.html"))
+	groupTmpl = template.Must(template.ParseFiles("./web/tmpl/group.go.html"))
+	userTmpl = template.Must(template.ParseFiles("./web/tmpl/user.go.html"))
 }
 
 func flushAndReloadData() {
