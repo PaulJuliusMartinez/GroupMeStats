@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"html/template"
 	"io"
 	"log"
@@ -84,7 +83,6 @@ func processNewMessage(w http.ResponseWriter, req *http.Request, dataChan chan G
 
 	gmd := <-dataChan
 	processMessage(gmd, message)
-	fmt.Println("Received message: ", message.Text)
 	gid := gmd.GroupID
 	api := gmd.APIToken
 	recentMessages := fetchMessages(gid, api, "")
@@ -107,7 +105,6 @@ func processNewMessage(w http.ResponseWriter, req *http.Request, dataChan chan G
 		}
 	}
 	gmd.PreviousMessages = recentMessages
-	fmt.Println(gmd.LikeMatrix)
 	dataChan <- gmd
 }
 
