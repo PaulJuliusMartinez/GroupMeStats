@@ -47,7 +47,21 @@ func setUpServer(port int, dataChan chan GroupMeData) {
 }
 
 func showGroupStats(w http.ResponseWriter, req *http.Request, dataChan chan GroupMeData) {
-	groupTmpl.Execute(w, nil)
+	gmd := <-dataChan
+	group := gmd.GroupID
+	api := gmd.APIToken
+	dataChan <- gmd
+
+	groupData := fetchGroup(group, api)
+
+	gmd = <-dataChan
+	groupDataStr, _ := json.Marshal(groupData)
+	postDataStr, _ := json.Marshal(gmd)
+	dataChan <- gmd
+	groupTmpl.Execute(w, map[string]template.HTML{
+		"GroupData": template.HTML(groupDataStr),
+		"PostData":  template.HTML(postDataStr),
+	})
 }
 
 func showUserStats(w http.ResponseWriter, req *http.Request, dataChan chan GroupMeData) {
@@ -55,7 +69,11 @@ func showUserStats(w http.ResponseWriter, req *http.Request, dataChan chan Group
 	if user == "" {
 		groupTmpl.Execute(w, nil)
 	} else {
-		userTmpl.Execute(w, user)
+		gmd := <-dataChan
+		str, _ := json.Marshal(gmd)
+		io.WriteString(w, string(str))
+
+		dataChan <- gmd
 	}
 }
 
@@ -67,7 +85,29 @@ func processNewMessage(w http.ResponseWriter, req *http.Request, dataChan chan G
 	gmd := <-dataChan
 	processMessage(gmd, message)
 	fmt.Println("Received message: ", message.Text)
-	// TODO(paulmtz): Keep track of last N messages and recalculate likes
+	gid := gmd.GroupID
+	api := gmd.APIToken
+	recentMessages := fetchMessages(gid, api, "")
+
+	var oldIndex = 0
+	for _, newMessage := range recentMessages[1:] {
+		// Find same message in old list
+		for ; oldIndex < len(gmd.PreviousMessages); oldIndex++ {
+			if newMessage.ID == gmd.PreviousMessages[oldIndex].ID {
+				break
+			}
+		}
+
+		if oldIndex == len(gmd.PreviousMessages) {
+			break
+		} else {
+			// Remove old likes, add new likes
+			gmd.trackLikeCounts(gmd.PreviousMessages[oldIndex], -1)
+			gmd.trackLikeCounts(newMessage, 1)
+		}
+	}
+	gmd.PreviousMessages = recentMessages
+	fmt.Println(gmd.LikeMatrix)
 	dataChan <- gmd
 }
 

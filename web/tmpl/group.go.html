@@ -1,6 +1,13 @@
 <html>
   <head>
     <title>ABF GroupMe</title>
+    <script>
+group = JSON.parse({{.GroupData}});
+var postData = JSON.parse({{.PostData}});
+likeMatrix = postData['likes'];
+numPosts = postData['numPosts'];
+timeOfDay = postData['postingTimes'];
+    </script>
   </head>
   <body>
     Howdy guys!
