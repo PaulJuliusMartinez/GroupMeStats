@@ -1,15 +1,122 @@
 <html>
   <head>
     <title>ABF GroupMe</title>
+    <link rel="stylesheet" type="text/css" href="http://10.31.119.116:8000/static/abf/css/main.css">
     <script>
-group = JSON.parse({{.GroupData}});
-var postData = JSON.parse({{.PostData}});
-likeMatrix = postData['likes'];
-numPosts = postData['numPosts'];
-timeOfDay = postData['postingTimes'];
+document.addEventListener("DOMContentLoaded", function(e) {
+  group = JSON.parse({{.GroupData}});
+  var postData = JSON.parse({{.PostData}});
+  likeMatrix = postData['likes'];
+  numPosts = postData['numPosts'];
+  timeOfDay = postData['postingTimes'];
+
+  for (var i = 0; i < group.members.length; i++) {
+    if (group.members[i].id != "63538981") {
+      group.members[i].nickname = escapeHTML(group.members[i].nickname);
+    }
+  }
+
+  var loudestTalkers = calculateMostPostsRankings();
+  var biggestHeart = calculateMostLikesRankings();
+  var biggestComedian = calculateAverageLikesRankings();
+
+  createList('Most Posts', loudestTalkers);
+  createList('Most Posts Liked', biggestHeart);
+  createList('Most Avg. Likes Per Post', biggestComedian);
+});
+
+var entityMap = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': '&quot;',
+  "'": '&#39;',
+  "/": '&#x2F;'
+};
+
+function escapeHTML(string) {
+  return String(string).replace(/[&<>"'\/]/g, function (s) {
+    return entityMap[s];
+  });
+}
+
+function calculateMostPostsRankings() {
+  var talkers = [];
+  for (var i = 0; i < group.members.length; i++) {
+    var posts = numPosts[parseInt(group.members[i].user_id)];
+    if (posts) {
+      talkers.push({'val': posts, 'text': posts, 'name': group.members[i].nickname});
+    }
+  }
+  talkers.sort(compareHighestFirst);
+  return talkers;
+}
+
+function calculateMostLikesRankings() {
+  var likesGiven = [];
+  for (var i = 0; i < group.members.length; i++) {
+    var sum = 0;
+    var id = parseInt(group.members[i].user_id)
+    for (var key in likeMatrix) {
+      if (likeMatrix[key][id]) {
+        sum += likeMatrix[key][id]
+      }
+    }
+    likesGiven.push({'val': sum, 'text': sum, 'name': group.members[i].nickname});
+  }
+  likesGiven.sort(compareHighestFirst);
+  return likesGiven;
+}
+
+function calculateAverageLikesRankings() {
+  var received = [];
+  for (var i = 0; i < group.members.length; i++) {
+    var sum = 0;
+    var id = parseInt(group.members[i].user_id)
+    if (likeMatrix[id]) {
+      for (var key in likeMatrix[id]) {
+        sum += likeMatrix[id][key]
+      }
+      var avgLikes = sum / numPosts[id];
+      if (numPosts[id] > 10) {
+        received.push({'val': avgLikes, 'text': Number(avgLikes).toFixed(2) + ' (' + numPosts[id] + ' posts)', 'name': group.members[i].nickname});
+      }
+    }
+  }
+  received.sort(compareHighestFirst);
+  return received;
+}
+
+function compareLowestFirst(a, b) {
+  return a.val - b.val;
+}
+
+function compareHighestFirst(a, b) {
+  return b.val - a.val;
+}
+
+function createList(title, list) {
+  var container = document.createElement('div');
+  container.className = 'listContainer';
+  var html = '<table cellspacing="0"><th colspan=3>' + title + '</th>';
+  for (var i = 0; i < 30; i++) {
+    html += '<tr>';
+    html += '<td>' + (i + 1) + '</td>';
+    html += '<td>' + list[i].name + '</td>';
+    html += '<td>' + list[i].text + '</td>';
+    html += '</tr>';
+  }
+  html += '</table>'
+  container.innerHTML = html;
+  document.getElementById('lists').appendChild(container)
+}
     </script>
   </head>
   <body>
-    Howdy guys!
+    <div class="header">
+      ABF DRUMZ
+    </div>
+    <div id="lists" class="lists">
+    </div>
   </body>
 </html>
